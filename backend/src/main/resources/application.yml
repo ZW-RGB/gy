@@ -2,11 +2,11 @@ spring:
   application:
     name: predictive-maintenance-backend
 
-  # MySQL配置
+  # MySQL配置（本地）
   datasource:
-    url: jdbc:mysql://master:3306/predictive_maintenance?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf-8
+    url: jdbc:mysql://127.0.0.1:3306/predictive_maintenance?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf-8
     username: root
-    password: '060201'
+    password: ''
     driver-class-name: com.mysql.cj.jdbc.Driver
     # HikariCP连接池配置
     hikari:
@@ -17,12 +17,12 @@ spring:
       max-lifetime: 1800000
       pool-name: HikariCP
 
-  # Redis配置（slave1节点）
+  # Redis配置（本地）
   data:
     redis:
-      host: slave1
+      host: 127.0.0.1
       port: 6379
-      password: '123456'
+      password:
       database: 0
       timeout: 5000ms
       lettuce:

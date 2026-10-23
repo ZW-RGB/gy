@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react'
 import * as echarts from 'echarts'
-import 'echarts-gl'
 import './TrendChart.css'
 
 const TrendChart = ({ devicesLatest }) => {
@@ -14,49 +13,30 @@ const TrendChart = ({ devicesLatest }) => {
 
     const option = {
       backgroundColor: 'transparent',
-      tooltip: {},
-      visualMap: {
-        show: false,
-        dimension: 2,
-        min: 40,
-        max: 90,
-        inRange: { color: ['#00e5a0', '#ff6b35', '#ff2d55'] }
+      tooltip: { trigger: 'axis' },
+      legend: {
+        show: true,
+        top: 0,
+        textStyle: { color: '#8892b0', fontSize: 11 },
+        type: 'scroll',
+        pageTextStyle: { color: '#8892b0' },
       },
-      xAxis3D: {
+      grid: { left: 50, right: 20, top: 40, bottom: 30 },
+      xAxis: {
         type: 'category',
-        name: '设备',
-        data: [],
+        data: Array.from({ length: 12 }, (_, i) => `${i * 5}m前`).reverse(),
         axisLine: { lineStyle: { color: '#1a2555' } },
-        axisLabel: { color: '#5a6380', interval: 4 }
+        axisLabel: { color: '#5a6380', fontSize: 10 },
       },
-      yAxis3D: {
-        type: 'category',
-        name: '时间',
-        data: [],
-        axisLine: { lineStyle: { color: '#1a2555' } },
-        axisLabel: { color: '#5a6380' }
-      },
-      zAxis3D: {
+      yAxis: {
         type: 'value',
         name: '温度°C',
         nameTextStyle: { color: '#8892b0' },
         axisLine: { lineStyle: { color: '#1a2555' } },
-        axisLabel: { color: '#5a6380' }
+        axisLabel: { color: '#5a6380' },
+        splitLine: { lineStyle: { color: 'rgba(26,37,85,0.5)' } },
       },
-      grid3D: {
-        boxWidth: 200,
-        boxDepth: 80,
-        viewControl: { autoRotate: false, distance: 240, alpha: 25, beta: 40 },
-        light: { main: { intensity: 1.2, shadow: true }, ambient: { intensity: 0.3 } },
-        environment: '#0a0e27'
-      },
-      series: [{
-        type: 'surface',
-        wireframe: { show: true, lineStyle: { color: 'rgba(0,212,255,0.08)', width: 1 } },
-        shading: 'lambert',
-        itemStyle: { opacity: 0.85 },
-        data: []
-      }]
+      series: [],
     }
     chart.setOption(option)
 
@@ -70,27 +50,44 @@ const TrendChart = ({ devicesLatest }) => {
 
   useEffect(() => {
     const chart = chartInstanceRef.current
-    if (!chart || !devicesLatest.length) return
+    if (!chart) return
+    // devicesLatest 为空时清空 series 并退出
+    if (!devicesLatest || !devicesLatest.length) {
+      chart.setOption({ series: [] })
+      return
+    }
 
-    const sorted = [...devicesLatest].sort((a, b) => (a.deviceId || '').localeCompare(b.deviceId || ''))
-    const deviceNames = sorted.map(d => d.deviceId?.slice(-6) || 'N/A')
-    const timeLabels = Array.from({ length: 12 }, (_, i) => `${i * 5}m`)
+    const sorted = [...devicesLatest].sort((a, b) =>
+      (a.deviceId || '').localeCompare(b.deviceId || ''),
+    )
+    // 最多显示 12 台设备，颜色区分
+    const palette = [
+      '#00d4ff', '#ff6b35', '#ff2d55', '#00e5a0',
+      '#a855f7', '#facc15', '#3b82f6', '#ec4899',
+      '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4',
+    ]
+    const shown = sorted.slice(0, 12)
 
-    const data = []
-    sorted.forEach((device, i) => {
-      timeLabels.forEach((_, j) => {
-        const base = device.temperature || 60
-        const wave = Math.sin((i + j) * 0.4) * 5
+    const series = shown.map((device, i) => {
+      const base = device.temperature || 50
+      const data = Array.from({ length: 12 }, (_, j) => {
+        const wave = Math.sin((i + j) * 0.5) * 6
         const noise = (Math.random() - 0.5) * 3
-        data.push([i, j, Math.max(35, Math.min(95, base + wave + noise))])
+        return Math.max(30, Math.min(95, base + wave + noise)).toFixed(1)
       })
+      return {
+        name: (device.deviceId || 'N/A').slice(-6),
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 4,
+        lineStyle: { width: 1.5, color: palette[i % palette.length] },
+        itemStyle: { color: palette[i % palette.length] },
+        data,
+      }
     })
 
-    chart.setOption({
-      xAxis3D: { data: deviceNames },
-      yAxis3D: { data: timeLabels },
-      series: [{ data }]
-    })
+    chart.setOption({ series }) // 合并更新，保留坐标轴配置
   }, [devicesLatest])
 
   return <div ref={chartRef} className="trend-chart" />
