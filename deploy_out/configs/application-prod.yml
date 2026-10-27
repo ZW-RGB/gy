@@ -1,0 +1,52 @@
+# ============== Spring Boot 生产配置 ==============
+# 启动：java -jar backend.jar --spring.profiles.active=prod
+
+spring:
+  application:
+    name: predictive-maintenance-backend
+
+  datasource:
+    url: jdbc:mysql://master:3306/predictive_maintenance?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf-8
+    username: root
+    password: '060201'
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 600000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+
+  data:
+    redis:
+      host: master
+      port: 6379
+      password: '123456'
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.predict.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl   # 生产环境关掉 SQL 日志
+  global-config:
+    db-config:
+      id-type: auto
+
+server:
+  port: 2006
+  servlet:
+    context-path: /api
+
+logging:
+  level:
+    root: INFO
+    com.predict: INFO

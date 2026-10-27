@@ -13,10 +13,10 @@ object DailyStatsJob {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  val HDFS_DATA_BASE = "hdfs://master:9000/data/history/sensor"
-  val MYSQL_URL = "jdbc:mysql://master:3306/predictive_maintenance?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf-8"
-  val MYSQL_USER = "root"
-  val MYSQL_PASSWORD = "060201"
+  val HDFS_DATA_BASE = spark.conf.getOption("spark.predictive.hdfs.data.base").getOrElse("hdfs://master:9000/data/history/sensor")
+  val MYSQL_URL = spark.conf.getOption("spark.predictive.mysql.url").getOrElse("jdbc:mysql://master:3306/predictive_maintenance")
+  val MYSQL_USER = spark.conf.getOption("spark.predictive.mysql.user").getOrElse("root")
+  val MYSQL_PASSWORD = spark.conf.getOption("spark.predictive.mysql.password").getOrElse("060201")
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession.builder()

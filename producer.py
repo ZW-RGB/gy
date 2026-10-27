@@ -15,14 +15,20 @@ from kafka import KafkaProducer
 import pymysql
 
 # ==================== 配置 ====================
-KAFKA_SERVERS = ['master', 'slave1', 'slave2']
+import os
+import itertools
+
+KAFKA_SERVERS = os.environ.get('KAFKA_SERVERS', 'localhost:9092').split(',')
 KAFKA_TOPIC = 'device-sensor'
 MYSQL_CONFIG = {
-    'host': 'master',
-    'user': 'root',
-    'password': '060201',
-    'database': 'predictive_maintenance'
+    'host': os.environ.get('MYSQL_HOST', 'localhost'),
+    'user': os.environ.get('MYSQL_USER', 'root'),
+    'password': os.environ.get('MYSQL_PASSWORD', ''),
+    'database': os.environ.get('MYSQL_DB', 'predictive_maintenance')
 }
+
+DEVICE_COUNT = int(os.environ.get('DEVICE_COUNT', '100'))
+SEND_INTERVAL = float(os.environ.get('SEND_INTERVAL_SEC', '1'))
 
 # 健康基线
 BASE_TEMP = 45.0

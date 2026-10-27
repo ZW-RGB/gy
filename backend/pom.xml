@@ -18,7 +18,7 @@
     <description>Industrial Device Predictive Maintenance Backend Service</description>
 
     <properties>
-        <java.version>25</java.version>
+        <java.version>17</java.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <lombok.version>1.18.36</lombok.version>
     </properties>
