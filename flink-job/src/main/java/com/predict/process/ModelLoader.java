@@ -29,16 +29,16 @@ public class ModelLoader extends RichMapFunction<FeatureWindow, AnomalyResult> {
         // 启动定时器，定期检查模型更新
         scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(this::checkAndReloadModel,
-                JobConfig.MODEL_RELOAD_INTERVAL_MS,
-                JobConfig.MODEL_RELOAD_INTERVAL_MS,
+                JobConfig.MODEL_RELOAD_INTERVAL_MS(),
+                JobConfig.MODEL_RELOAD_INTERVAL_MS(),
                 TimeUnit.MILLISECONDS);
     }
 
     private void loadModelFromIndex() {
         try {
-            String indexContent = HdfsUtils.readFileAsString(JobConfig.HDFS_MODEL_INDEX_PATH);
+            String indexContent = HdfsUtils.readFileAsString(JobConfig.HDFS_MODEL_INDEX_PATH());
             if (indexContent == null || indexContent.trim().isEmpty()) {
-                LOG.error("Model index file is empty or not found: {}", JobConfig.HDFS_MODEL_INDEX_PATH);
+                LOG.error("Model index file is empty or not found: {}", JobConfig.HDFS_MODEL_INDEX_PATH());
                 return;
             }
             String newModelPath = indexContent.trim();
@@ -72,7 +72,7 @@ public class ModelLoader extends RichMapFunction<FeatureWindow, AnomalyResult> {
                     featureWindow.getFeatures(), 0.0, false);
         }
         double anomalyScore = model.predict(featureWindow.getFeatures());
-        boolean isAlarm = anomalyScore >= JobConfig.ALARM_THRESHOLD;
+        boolean isAlarm = anomalyScore >= JobConfig.ALARM_THRESHOLD();
         return new AnomalyResult(featureWindow.getDeviceId(), featureWindow.getWindowEndTime(),
                 featureWindow.getFeatures(), anomalyScore, isAlarm);
     }

@@ -36,7 +36,7 @@ public class FeatureExtractor extends KeyedProcessFunction<String, SensorData, F
 
         // 计算当前时间戳的窗口结束时间（对齐到滑动步长）
         long currentTime = value.getTimestamp();
-        long windowEnd = ((currentTime / JobConfig.WINDOW_SLIDE_MS) + 1) * JobConfig.WINDOW_SLIDE_MS;
+        long windowEnd = ((currentTime / JobConfig.WINDOW_SLIDE_MS()) + 1) * JobConfig.WINDOW_SLIDE_MS();
 
         // 获取下次触发时间
         Long next = nextTriggerTime.value();
@@ -55,7 +55,7 @@ public class FeatureExtractor extends KeyedProcessFunction<String, SensorData, F
         if (buffer.isEmpty()) return;
 
         // 过滤出窗口内数据：时间戳在 [timestamp - WINDOW_SIZE, timestamp] 范围内
-        long windowStart = timestamp - JobConfig.WINDOW_SIZE_MS;
+        long windowStart = timestamp - JobConfig.WINDOW_SIZE_MS();
         List<SensorData> windowData = new ArrayList<>();
         for (SensorData data : buffer) {
             if (data.getTimestamp() >= windowStart && data.getTimestamp() <= timestamp) {
@@ -84,7 +84,7 @@ public class FeatureExtractor extends KeyedProcessFunction<String, SensorData, F
 
         // 清理过期数据：保留最近一个窗口长度内的数据，确保滑动窗口重叠正确
         windowBuffer.clear();
-        long expireThreshold = timestamp - JobConfig.WINDOW_SIZE_MS;
+        long expireThreshold = timestamp - JobConfig.WINDOW_SIZE_MS();
         for (SensorData data : buffer) {
             if (data.getTimestamp() > expireThreshold) {
                 windowBuffer.add(data);

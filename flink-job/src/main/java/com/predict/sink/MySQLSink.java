@@ -26,7 +26,7 @@ public class MySQLSink extends RichSinkFunction<AnomalyResult> {
     public void open(Configuration parameters) throws Exception {
         objectMapper = new ObjectMapper();
         Class.forName("com.mysql.cj.jdbc.Driver");
-        connection = DriverManager.getConnection(JobConfig.MYSQL_URL, JobConfig.MYSQL_USER, JobConfig.MYSQL_PASSWORD);
+        connection = DriverManager.getConnection(JobConfig.MYSQL_URL(), JobConfig.MYSQL_USER(), JobConfig.MYSQL_PASSWORD());
         preparedStatement = connection.prepareStatement(INSERT_SQL);
     }
 
@@ -38,7 +38,7 @@ public class MySQLSink extends RichSinkFunction<AnomalyResult> {
             if (connection != null) {
                 try { connection.close(); } catch (Exception ignored) {}
             }
-            connection = DriverManager.getConnection(JobConfig.MYSQL_URL, JobConfig.MYSQL_USER, JobConfig.MYSQL_PASSWORD);
+            connection = DriverManager.getConnection(JobConfig.MYSQL_URL(), JobConfig.MYSQL_USER(), JobConfig.MYSQL_PASSWORD());
             preparedStatement = connection.prepareStatement(INSERT_SQL);
         }
     }

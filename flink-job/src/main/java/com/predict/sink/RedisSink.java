@@ -21,7 +21,7 @@ public class RedisSink extends RichSinkFunction<AnomalyResult> {
         JedisPoolConfig poolConfig = new JedisPoolConfig();
         objectMapper = new ObjectMapper();
         poolConfig.setMaxTotal(10);
-        jedisPool = new JedisPool(poolConfig, JobConfig.REDIS_HOST, JobConfig.REDIS_PORT, 2000, JobConfig.REDIS_PASSWORD);
+        jedisPool = new JedisPool(poolConfig, JobConfig.REDIS_HOST(), JobConfig.REDIS_PORT(), 2000, JobConfig.REDIS_PASSWORD());
     }
 
     @Override

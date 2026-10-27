@@ -48,27 +48,27 @@ public class CEPRuleDetector extends KeyedProcessFunction<String, SensorData, An
         Integer riseCount = tempRiseCount.value();
         if (riseCount == null) riseCount = 0;
 
-        if (prevTemp != null && (value.getTemperature() - prevTemp) >= JobConfig.CEP_TEMP_RISE_THRESHOLD) {
+        if (prevTemp != null && (value.getTemperature() - prevTemp) >= JobConfig.CEP_TEMP_RISE_THRESHOLD()) {
             riseCount++;
         } else {
             riseCount = 0;
         }
 
-        if (riseCount >= JobConfig.CEP_TEMP_RISE_COUNT) {
+        if (riseCount >= JobConfig.CEP_TEMP_RISE_COUNT()) {
             hitRule = "R1";
         }
         lastTemp.update(value.getTemperature());
         tempRiseCount.update(riseCount);
 
         // R2: 振动+电流双超阈值
-        if (value.getVibration() > JobConfig.CEP_VIBRATION_THRESHOLD
-                && value.getCurrent() > JobConfig.CEP_CURRENT_THRESHOLD) {
+        if (value.getVibration() > JobConfig.CEP_VIBRATION_THRESHOLD()
+                && value.getCurrent() > JobConfig.CEP_CURRENT_THRESHOLD()) {
             hitRule = "R2";
         }
 
         // R3: 压力急降
         Double prevPressure = lastPressure.value();
-        if (prevPressure != null && (prevPressure - value.getPressure()) >= JobConfig.CEP_PRESSURE_DROP_THRESHOLD) {
+        if (prevPressure != null && (prevPressure - value.getPressure()) >= JobConfig.CEP_PRESSURE_DROP_THRESHOLD()) {
             hitRule = "R3";
         }
         lastPressure.update(value.getPressure());

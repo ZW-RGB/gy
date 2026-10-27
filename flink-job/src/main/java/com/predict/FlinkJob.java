@@ -39,17 +39,17 @@ public class FlinkJob {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(2);
 
-        env.setStateBackend(new RocksDBStateBackend("hdfs://master:9000" + JobConfig.HDFS_CHECKPOINT_PATH));
+        env.setStateBackend(new RocksDBStateBackend(JobConfig.HDFS_URI() + JobConfig.HDFS_CHECKPOINT_PATH()));
         env.enableCheckpointing(60000);
         env.getCheckpointConfig().setMinPauseBetweenCheckpoints(30000);
         env.getCheckpointConfig().setCheckpointTimeout(600000);
 
         Properties kafkaProps = new Properties();
-        kafkaProps.setProperty("bootstrap.servers", JobConfig.KAFKA_BOOTSTRAP_SERVERS);
-        kafkaProps.setProperty("group.id", JobConfig.KAFKA_GROUP_ID);
+        kafkaProps.setProperty("bootstrap.servers", JobConfig.KAFKA_BOOTSTRAP_SERVERS());
+        kafkaProps.setProperty("group.id", JobConfig.KAFKA_GROUP_ID());
 
         FlinkKafkaConsumer<SensorData> kafkaSource = new FlinkKafkaConsumer<>(
-                JobConfig.KAFKA_TOPIC,
+                JobConfig.KAFKA_TOPIC(),
                 new SensorDataDeserializationSchema(),
                 kafkaProps
         );
@@ -77,7 +77,7 @@ public class FlinkJob {
         
 
         // ----- 使用 Parquet 格式写入 HDFS，并使用自定义的 CheckpointRollingPolicy -----
-        Path parquetOutputPath = new Path(JobConfig.HDFS_SENSOR_OUTPUT_PATH);
+        Path parquetOutputPath = new Path(JobConfig.HDFS_SENSOR_OUTPUT_PATH());
         ParquetWriterFactory<SensorData> writerFactory = AvroParquetWriters.forReflectRecord(SensorData.class);
         final ConcurrentHashMap<String, Long> bucketCreationTime = new ConcurrentHashMap<>();
 
