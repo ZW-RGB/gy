@@ -13,26 +13,28 @@ import json
 import random
 import numpy as np
 import os
+import posixpath  # 强制生成 Linux / POSIX 风格路径，避免在 Windows 上产生反斜杠
 from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report
 import pymysql
 
-# ==================== 配置 ====================
+# ==================== 配置（全部外部化，兼容 Windows 开发 / Linux 生产） ====================
 MYSQL_CONFIG = {
-    'host': 'master',
-    'user': 'root',
-    'password': '060201',
-    'database': 'predictive_maintenance'
+    'host': os.environ.get('MYSQL_HOST', 'localhost'),
+    'user': os.environ.get('MYSQL_USER', 'root'),
+    'password': os.environ.get('MYSQL_PASSWORD', ''),
+    'database': os.environ.get('MYSQL_DB', 'predictive_maintenance')
 }
-OUTPUT_DIR = '/home/hadoop/tmp'
-MODEL_TYPE = 'anomaly'
-WINDOW_SIZE_SEC = 30
-WINDOW_SLIDE_SEC = 10
-DAYS_BACK = 7
-ABNORMAL_WINDOW_RATIO = 0.3  # 窗口内异常点占比阈值
-# =============================================
+OUTPUT_DIR = os.environ.get('MODEL_OUTPUT_DIR', '/home/hadoop/tmp')
+HDFS_MODEL_BASE = os.environ.get('HDFS_MODEL_BASE', '/models/anomaly')
+MODEL_TYPE = os.environ.get('MODEL_TYPE', 'anomaly')
+WINDOW_SIZE_SEC = int(os.environ.get('WINDOW_SIZE_SEC', '30'))
+WINDOW_SLIDE_SEC = int(os.environ.get('WINDOW_SLIDE_SEC', '10'))
+DAYS_BACK = int(os.environ.get('DAYS_BACK', '7'))
+ABNORMAL_WINDOW_RATIO = float(os.environ.get('ABNORMAL_WINDOW_RATIO', '0.3'))  # 窗口内异常点占比阈值
+# =========================================================================================
 
 random.seed(42)
 np.random.seed(42)
@@ -356,10 +358,11 @@ def main():
     precision_anomaly = report['异常']['precision']
     recall_anomaly = report['异常']['recall']
 
-    # 保存模型
+    # 保存模型（用 posixpath 保证目标路径总是 / 分隔，即使在 Windows 上开发也OK）
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     model_filename = f"{MODEL_TYPE}_model_{timestamp}.json"
-    model_path = os.path.join(OUTPUT_DIR, model_filename)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    model_path = posixpath.join(OUTPUT_DIR, model_filename)
     export_model_to_json(model, scaler, model_path)
     print(f"模型已保存至: {model_path}")
 
@@ -368,7 +371,7 @@ def main():
         'version': timestamp,
         'model_type': MODEL_TYPE,
         'created_at': datetime.now().isoformat(),
-        'hdfs_path': f"/models/anomaly/{model_filename}",
+        'hdfs_path': posixpath.join(HDFS_MODEL_BASE, model_filename),
         'local_path': model_path,
         'training_samples': X.shape[0],
         'abnormal_ratio': float(abnormal_ratio),
@@ -383,13 +386,13 @@ def main():
             'recall': float(recall_anomaly)
         }
     }
-    desc_path = os.path.join(OUTPUT_DIR, f"{MODEL_TYPE}_model_description_{timestamp}.json")
+    desc_path = posixpath.join(OUTPUT_DIR, f"{MODEL_TYPE}_model_description_{timestamp}.json")
     with open(desc_path, 'w') as f:
         json.dump(description, f, indent=2)
     print(f"模型描述文件已保存至: {desc_path}")
 
     # 更新本地索引
-    index_path = os.path.join(OUTPUT_DIR, f"{MODEL_TYPE}_current_version.txt")
+    index_path = posixpath.join(OUTPUT_DIR, f"{MODEL_TYPE}_current_version.txt")
     with open(index_path, 'w') as f:
         f.write(model_path)
     print(f"当前版本索引已更新: {index_path}")

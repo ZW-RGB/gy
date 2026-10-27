@@ -9,20 +9,22 @@
 import json
 import glob
 import os
+import posixpath
 import sys
 import pymysql
 
+# 全部外部化，兼容 Windows 开发 / Linux 生产
 MYSQL_CONFIG = {
-    'host': 'master',
-    'user': 'root',
-    'password': '060201',
-    'database': 'predictive_maintenance'
+    'host': os.environ.get('MYSQL_HOST', 'localhost'),
+    'user': os.environ.get('MYSQL_USER', 'root'),
+    'password': os.environ.get('MYSQL_PASSWORD', ''),
+    'database': os.environ.get('MYSQL_DB', 'predictive_maintenance')
 }
-DESCRIPTION_DIR = '/home/hadoop/tmp'
+DESCRIPTION_DIR = os.environ.get('MODEL_OUTPUT_DIR', '/home/hadoop/tmp')
 
 
 def find_latest_description():
-    pattern = os.path.join(DESCRIPTION_DIR, 'anomaly_model_description_*.json')
+    pattern = posixpath.join(DESCRIPTION_DIR, 'anomaly_model_description_*.json')
     files = sorted(glob.glob(pattern))
     if not files:
         print(f"未找到描述文件: {pattern}")

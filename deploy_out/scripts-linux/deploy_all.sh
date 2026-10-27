@@ -207,15 +207,15 @@ EOF
 
 # ---------- 6. 构建 + 部署应用 ----------
 step_app() {
-  info "===== [6/7] 构建并部署后端 + 前端 ====="
-  cd /workspace  # 假设源码在 /workspace（否则 git clone）
+  info "===== [6/7] 部署后端 + 前端 ====="
+  # 本脚本假设已被解压到 $APP_HOME（如 /opt/predictive），且包含：
+  # backend.jar、configs/application-prod.yml、frontend-dist、*.py、create_tables.sql
+  cd $APP_HOME
 
-  # 后端打包（使用 prod profile）
-  cd backend
-  mvn -q -DskipTests spring-boot:repackage
+  # 后端
   mkdir -p $APP_HOME/backend
-  cp target/predictive-maintenance-backend-1.0.0.jar $APP_HOME/backend/
-  cp ../deploy/configs/application-prod.yml $APP_HOME/backend/application-prod.yml
+  cp backend.jar $APP_HOME/backend/predictive-maintenance-backend-1.0.0.jar
+  cp configs/application-prod.yml $APP_HOME/backend/application-prod.yml
 
   # 后端 systemd 服务（开机自启）
   cat > /etc/systemd/system/predictive-backend.service <<EOF
@@ -242,19 +242,15 @@ EOF
   sleep 5
   info "Backend status: $(systemctl is-active predictive-backend) | $(curl -s http://localhost:2006/api/devices/info | head -c 40 || echo 'N/A')"
 
-  # 前端打包
-  cd /workspace/frontend
-  npm install --silent 2>/dev/null || npm install
-  npm run build 2>/dev/null || {
-    # Vite 代理 target 是 localhost，prod 构建时不需要代理
-    npm run build
-  }
+  # 前端（直接使用已构建好的静态资源）
+  mkdir -p $APP_HOME/frontend
+  cp -r frontend-dist/* $APP_HOME/frontend/ 2>/dev/null || { warn "未找到 frontend-dist，请在打包前先执行 npm run build"; }
   rm -f /etc/nginx/sites-enabled/default
   cat > /etc/nginx/sites-available/predictive <<EOF
 server {
     listen 80 default_server;
     server_name _;
-    root $APP_HOME/frontend/dist;
+    root $APP_HOME/frontend;
     index index.html;
 
     location / {
@@ -275,18 +271,18 @@ EOF
 # ---------- 7. 启动管道 ----------
 step_pipeline() {
   info "===== [7/7] 启动数据管道（Python producer → Kafka）====="
-  cd /workspace
-  cp deploy/configs/producer.env .
+  cd $APP_HOME
+  cp configs/producer.env .
   cat >> producer.env <<EOF
 KAFKA_SERVERS=master:9092
 MYSQL_HOST=master
 MYSQL_USER=root
 MYSQL_PASSWORD=$DB_PASSWORD
 MYSQL_DB=predictive_maintenance
-EOF
-
-  cat > $APP_HOME/frontend/.env <<EOF 2>/dev/null || true
-# 不影响 prod 构建
+MODEL_OUTPUT_DIR=/home/hadoop/tmp
+HDFS_MODEL_BASE=hdfs://master:9000/models
+HDFS_URI=hdfs://master:9000
+HDFS_DATA_BASE=hdfs://master:9000/data/history/sensor
 EOF
 
   # Producer 后台跑
@@ -297,9 +293,9 @@ After=network.target kafka.service
 
 [Service]
 Type=simple
-WorkingDirectory=/workspace
-EnvironmentFile=/workspace/producer.env
-ExecStart=/usr/bin/python3 /workspace/producer.py
+WorkingDirectory=$APP_HOME
+EnvironmentFile=$APP_HOME/producer.env
+ExecStart=/usr/bin/python3 $APP_HOME/producer.py
 Restart=always
 RestartSec=5
 
@@ -307,7 +303,20 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
   systemctl daemon-reload && systemctl enable predictive-producer && systemctl start predictive-producer
-  info "Producer 已启动 | journalctl -u predictive-producer -f 查看"
+
+  # 模型训练/部署 cron（每周日凌晨 3 点训练，4 点部署；每日 1 点统计）
+  cat > /etc/cron.d/predictive <<EOF
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$SPARK_HOME/bin:$FLINK_HOME/bin
+
+# 每日离线统计
+0 1 * * * root bash $APP_HOME/submit_daily_stats.sh >> /home/hadoop/logs/spark-jobs/daily_stats.log 2>&1
+
+# 每周离线训练 + 模型部署
+0 3 * * 0 root source $APP_HOME/producer.env && python3 $APP_HOME/train_init_model.py >> /home/hadoop/logs/train_model.log 2>&1 && python3 $APP_HOME/register_model.py >> /home/hadoop/logs/register_model.log 2>&1 && bash $APP_HOME/deploy_model.sh >> /home/hadoop/logs/deploy_model.log 2>&1
+EOF
+  chmod 644 /etc/cron.d/predictive
+  info "Producer 已启动；模型训练 cron 已写入 /etc/cron.d/predictive"
 }
 
 # ---------- 执行 ----------

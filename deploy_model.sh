@@ -1,24 +1,41 @@
 #!/bin/bash
 # 训练后清理HDFS旧数据 + 上传新模型 + 更新索引
-# 用法: ./deploy_model.sh [model_dir]
-# model_dir 默认 /home/hadoop/tmp
+# 用法:
+#   ./deploy_model.sh [model_dir]
+# 也可通过环境变量覆盖：
+#   MODEL_DIR           本地模型目录，默认 /home/hadoop/tmp
+#   HDFS_URI            HDFS 地址，默认 hdfs://master:9000
+#   HDFS_MODEL_BASE     HDFS 模型根目录，默认 ${HDFS_URI}/models
+#   HDFS_DATA_BASE      HDFS 历史数据根目录，默认 ${HDFS_URI}/data/history/sensor
+#   KEEP_DAYS           清理超过 N 天的历史数据，默认 7
 
-MODEL_DIR=${1:-/home/hadoop/tmp}
-HDFS_MODEL_BASE="hdfs://master:9000/models"
-HDFS_DATA_BASE="hdfs://master:9000/data/history/sensor"
-KEEP_DAYS=7
+set -e
+
+MODEL_DIR=${1:-${MODEL_DIR:-/home/hadoop/tmp}}
+HDFS_URI=${HDFS_URI:-hdfs://master:9000}
+HDFS_MODEL_BASE=${HDFS_MODEL_BASE:-${HDFS_URI}/models}
+HDFS_DATA_BASE=${HDFS_DATA_BASE:-${HDFS_URI}/data/history/sensor}
+KEEP_DAYS=${KEEP_DAYS:-7}
+
+echo "===== 配置 ====="
+echo "本地模型目录: $MODEL_DIR"
+echo "HDFS URI:     $HDFS_URI"
+echo "HDFS 模型目录: $HDFS_MODEL_BASE"
+echo "HDFS 数据目录: $HDFS_DATA_BASE"
+echo "保留天数:     $KEEP_DAYS"
+echo ""
 
 echo "===== 1. 清理 HDFS 超过 ${KEEP_DAYS} 天的历史数据 ====="
 CUTOFF_DATE=$(date -d "${KEEP_DAYS} days ago" +%Y-%m-%d)
 echo "保留 ${CUTOFF_DATE} 之后的数据"
 
 # 列出所有日期分区并删除过期数据
-hdfs dfs -ls ${HDFS_DATA_BASE} | while read -r line; do
+hdfs dfs -ls ${HDFS_DATA_BASE} 2>/dev/null | while read -r line; do
     dir_path=$(echo "$line" | awk '{print $NF}')
     dir_date=$(echo "$dir_path" | grep -oP '\d{4}-\d{2}-\d{2}')
     if [ -n "$dir_date" ] && [[ "$dir_date" < "$CUTOFF_DATE" ]]; then
         echo "删除过期数据: $dir_path"
-        hdfs dfs -rm -r -skipTrash "$dir_path"
+        hdfs dfs -rm -r -skipTrash "$dir_path" || true
     fi
 done
 echo "HDFS 历史数据清理完成"
@@ -47,12 +64,11 @@ echo "索引已更新: $INDEX_PATH -> ${HDFS_MODEL_BASE}/anomaly/${MODEL_FILENAM
 
 echo ""
 echo "===== 5. 清理本地旧模型文件（保留最新3个） ====="
-ls -t ${MODEL_DIR}/anomaly_model_*.json | tail -n +4 | xargs -r rm -f
-ls -t ${MODEL_DIR}/anomaly_model_description_*.json | tail -n +4 | xargs -r rm -f
+ls -t ${MODEL_DIR}/anomaly_model_*.json 2>/dev/null | tail -n +4 | xargs -r rm -f || true
+ls -t ${MODEL_DIR}/anomaly_model_description_*.json 2>/dev/null | tail -n +4 | xargs -r rm -f || true
 echo "本地旧文件清理完成"
 
 echo ""
 echo "===== 部署完成 ====="
 echo "模型路径: ${HDFS_MODEL_BASE}/anomaly/${MODEL_FILENAME}"
 echo "索引文件: $INDEX_PATH"
-

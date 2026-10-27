@@ -13,9 +13,11 @@ echo "[2/5] 拷贝 Linux 脚本..."
 cp -r deploy/scripts/linux $OUT/scripts-linux
 echo "[3/5] 拷贝 Windows 脚本..."
 cp -r deploy/scripts/windows $OUT/scripts-windows
-echo "[4/5] 拷贝数据库与 README..."
+echo "[4/5] 拷贝数据库、Python 训练/生产脚本与 README..."
 cp create_tables.sql $OUT/
 cp README.md $OUT/
+cp producer.py train_init_model.py register_model.py deploy_model.sh create_tables.sql $OUT/ 2>/dev/null || true
+cp spark-offline-job/submit_daily_stats.sh spark-offline-job/submit_model_training.sh $OUT/ 2>/dev/null || true
 
 # 后端 jar（如果已经打包好）
 if [ -f backend/target/predictive-maintenance-backend-1.0.0.jar ]; then
